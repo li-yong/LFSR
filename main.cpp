@@ -75,30 +75,20 @@ void tpg_has_input(LFSR lfsr, vector<int> poly_vec, int d_ff_num, string inputS)
     int len = inputS.length();
     vector<int> input_vector = stringToBinaryVector(inputS, true);
 
-    bitset<8> input_bs(inputS);
-    // constexpr int d_ff_num = ff_num;
-
-    // Process the bitmap
-    cout << "Bitmap: " << input_bs << endl;
-
     // Iterate from right (least significant bit) to left (most significant bit)
     for (int i = 0; i < inputS.length(); ++i)
     {
-        // constexpr int d_ff_num = 5;
-
-        // cout << "Bit at position " << i << " (from right to left): " << input_bs[i] << endl;
-        // bitset<32> last_op(lfsr.get32bit());
         uint32_t get32bit = lfsr.get32bit();
 
         vector<int> last_op = intToBinaryVector(lfsr.get32bit(), d_ff_num);
-        // cout << "last time output: " << output0 << '\n';
 
-        lfsr.rightShift(0);  // shift right 1 bit, fill 0 at MSB.
-        int FB = last_op[d_ff_num-1]; // the first bit, LSB.
+        lfsr.rightShift(0);             // shift right 1 bit, fill 0 at MSB.
+        int FB = last_op[d_ff_num - 1]; // the first bit, LSB.
 
         /*
-        X0, X1, X2, X3, X4
-        bit[4], bit[3], bit[2], bit[1], bit[0]
+        d-ff: X0, X1, X2, X3, X4
+        last_op: [0], 1, 2, 3, [4]
+        lsfr: bit[4], bit[3], bit[2], bit[1], bit[0]
         */
 
         auto x0 = FB ^ input_vector[i]; // MSB.
@@ -110,14 +100,20 @@ void tpg_has_input(LFSR lfsr, vector<int> poly_vec, int d_ff_num, string inputS)
         // iterate poly_x
         for (int j = 0; j < poly_vec.size(); ++j)
         {
-            auto x = FB ^ last_op[poly_vec[j]-1]; // xor (lsb, previous_postion_bit_in_last_run)
-            lfsr.setBit(d_ff_num - poly_vec[j] - 1, x);    // setBit(position, value)
+            auto x = FB ^ last_op[poly_vec[j] - 1];     // xor (lsb, previous_postion_bit_in_last_run)
+            lfsr.setBit(d_ff_num - poly_vec[j] - 1, x); // setBit(position, value)
         }
 
         // bitset<32> this_op(lfsr.get32bit());
         vector<int> this_op = intToBinaryVector(lfsr.get32bit(), d_ff_num);
-        cout << "loop " << i << ", input " << input_bs[i] << ", output: ";
-        cout << this_op[0] << this_op[1] << this_op[2] << this_op[3] << this_op[4] << '\n';
+        cout << "loop " << i << ", input " << input_vector[i] << ", output: ";
+
+        for (int i = 0; i < this_op.size(); ++i)
+        {
+            cout << this_op[i];
+        }
+
+        cout << '\n';
     }
 }
 

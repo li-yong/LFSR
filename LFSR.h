@@ -26,6 +26,8 @@ SOFTWARE.
 #define LFSR_H
 
 #include <iostream>
+#include <cstdint>
+
 
 class LFSR
 {

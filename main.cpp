@@ -117,42 +117,47 @@ void tpg_has_input(LFSR lfsr, vector<int> poly_vec, int d_ff_num, string inputS)
     }
 }
 
-void tpg_has_no_input(LFSR lfsr, vector<int> poly_vec, int d_ff_num)
+void tpg_has_no_input(LFSR lfsr, vector<int> poly_vec, int d_ff_num, int loop_num)
 {
 
-    int len = 100;
-
     // Iterate from right (least significant bit) to left (most significant bit)
-    for (int i = 0; i < len; ++i)
+    for (int i = 0; i < loop_num; ++i)
     {
-        // constexpr int d_ff_num = 5;
+        uint32_t get32bit = lfsr.get32bit();
 
-        // cout << "Bit at position " << i << " (from right to left): " << input_bs[i] << endl;
-        bitset<32> last_op(lfsr.get32bit());
-        // cout << "last time output: " << output0 << '\n';
+        vector<int> last_op = intToBinaryVector(lfsr.get32bit(), d_ff_num);
 
-        lfsr.rightShift(0);   // shift right 1 bit, fill 0 at MSB.
-        auto FB = last_op[0]; // the first bit, LSB.
+        lfsr.rightShift(0);             // shift right 1 bit, fill 0 at MSB.
+        int FB = last_op[d_ff_num - 1]; // the first bit, LSB.
 
         /*
-        X0, X1, X2, X3, X4
-        bit[4], bit[3], bit[2], bit[1], bit[0]
+        d-ff: X0, X1, X2, X3, X4
+        last_op: [0], 1, 2, 3, [4]
+        lsfr: bit[4], bit[3], bit[2], bit[1], bit[0]
         */
 
         lfsr.setBit(d_ff_num - 1, FB); // MSB.
 
-        lfsr.setBit(0, last_op[1]); // LSB
+        lfsr.setBit(0, last_op[d_ff_num - 2]); // LSB
 
         // Middle terms in Polynomial.
         // iterate poly_x
         for (int j = 0; j < poly_vec.size(); ++j)
         {
-            auto x = FB ^ last_op[d_ff_num - poly_vec[j]]; // xor (lsb, previous_postion_bit_in_last_run)
-            lfsr.setBit(d_ff_num - poly_vec[j] - 1, x);    // setBit(position, value)
+            auto x = FB ^ last_op[poly_vec[j] - 1];     // xor (lsb, previous_postion_bit_in_last_run)
+            lfsr.setBit(d_ff_num - poly_vec[j] - 1, x); // setBit(position, value)
         }
 
-        bitset<32> this_op(lfsr.get32bit());
-        cout << "loop " << i << ", input " << FB << ", output: " << this_op << '\n';
+        // bitset<32> this_op(lfsr.get32bit());
+        vector<int> this_op = intToBinaryVector(lfsr.get32bit(), d_ff_num);
+        cout << "loop " << i << ", feed last output to input " << FB << ", output: ";
+
+        for (int i = 0; i < this_op.size(); ++i)
+        {
+            cout << this_op[i];
+        }
+
+        cout << '\n';
     }
 }
 
@@ -169,38 +174,54 @@ int main(int argc, char **argv)
     // The ORA is a 16-bit LFSR whose equation is h(x) = x16 + x15 + x13 + x4 + 1.
     vector<int> poly_vec_ora = {15, 13, 4};
 
-    const int d_ff_num = 5;
+    int d_ff_num; // number of D flip-flops.
 
-    // Create a n bits register, by default all bits are set to 0
-    LFSR lfsr(d_ff_num);
+    bool enable_inputS; // Enable the inputS. Set to True if inputS is provided.
+    string inputS;      // The string feeding to the input of the LFSR. Not the feedback input.
 
-    bool has_inputS = false;
+    string initS; // The initial state of the LFSR.
 
-    string inputS;
+    LFSR lfsr(32);
 
-    bool enable_inputS;
     enable_inputS = true;
     // enable_inputS = false;
 
     if (enable_inputS)
     {
         inputS = "01010001";
-        bitset<8> input_bs(inputS);
     }
-
-    string initS;
-    initS = "101010101010101010101010100101010";
-    initS = "00000";
 
     // Initialize the register with the input
     // Iterate from right (least significant bit) to left (most significant bit)
 
-    bitset<5> init_bs(initS);
-
-    for (int i = 0; i < init_bs.size(); ++i)
+    if (enable_inputS)
     {
-        lfsr.setBit(i, init_bs.test(i));
+        initS = "00000"; // initial state is all 0 if inputS is provided.
+        LFSR lfsr(5);
+        d_ff_num = 5;
     }
+    else
+    {
+        initS = "101010101010101010101010100101010";
+        initS = "10101010101010101010101010010101";
+
+        initS = initS.substr(initS.size() - 32);
+
+        // Create a n bits register, by default all bits are set to 0
+        LFSR lfsr(32);
+        d_ff_num = 32;
+    }
+
+    vector<int> bv = stringToBinaryVector(initS, true);
+
+    /* INIT LFSR  */
+
+    for (int i = 0; i < bv.size(); ++i)
+    {
+        lfsr.setBit(i, bv[i]);
+    }
+
+    /* SCAN  */
 
     if (enable_inputS)
     {
@@ -210,8 +231,8 @@ int main(int argc, char **argv)
     }
     else
     {
-
-        tpg_has_no_input(lfsr, poly_vec, d_ff_num);
+        int loop_num = 100;
+        tpg_has_no_input(lfsr, poly_vec_tpg, d_ff_num, loop_num);
     }
 
     exit(0);
